@@ -1,0 +1,170 @@
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_breast_cancer
+
+# Load the dataset
+CancerDataset = load_breast_cancer()
+print(type(CancerDataset))
+print(CancerDataset.keys())
+
+def printBasicStats(dataset):
+  print(dataset['feature_names'], dataset['target_names'])
+  print(len(dataset['feature_names']), type(dataset['feature_names']))  
+  print(dataset['data'].shape, dataset['target'].shape)
+  print(dataset['DESCR'])
+
+printBasicStats(CancerDataset)
+
+def getDataFrame(dataset):
+  numData = dataset['target'].shape[0]
+  newDataset = np.concatenate((dataset['data'], dataset['target'].reshape(numData, -1)), axis=1)
+  newNames = np.append(dataset['feature_names'], ['target'])
+  return pd.DataFrame(newDataset, columns=newNames)
+
+DataFrame = getDataFrame(CancerDataset)
+print(DataFrame)
+
+def printLabelDist(df, dataset):
+  counts = df.target.value_counts(ascending=True)
+  print(counts)
+  counts.index = dataset['target_names']
+  print(counts)  
+
+printLabelDist(DataFrame, CancerDataset)
+
+# Data split
+
+from sklearn.model_selection import train_test_split
+def splitData(df, size):
+  X, y = df[df.columns[:-1]], df.target
+  X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=size, test_size=X.shape[0] - size, random_state=0)
+  return (X_train, y_train), (X_test, y_test)
+
+(X_train, y_train), (X_test, y_test) = splitData(DataFrame, 400)
+assert X_train.shape == (400, 30)
+assert y_train.shape == (400, )
+
+# Train knn model
+
+from sklearn.neighbors import KNeighborsClassifier
+def trainKnn(X, y, k=1):
+  model = KNeighborsClassifier(n_neighbors=k)
+  model.fit(X, y)
+  pred = model.predict(X)
+  accuracy = sum(pred == y) / len(X)    
+  return model, accuracy
+
+Model, Acc_train = trainKnn(X_train, y_train, 1)
+print(Acc_train)
+Model3, Acc_train3 = trainKnn(X_train, y_train, 3)
+print(Acc_train3)
+
+# Test knn
+def testKnn(model, X, y):
+  pred = model.predict(X)
+  accuracy = sum(pred == y) / len(X)
+  return accuracy 
+  
+testKnn(Model, X_test, y_test)
+for k in range(1, 20):
+  Model_k, Acc_train = trainKnn(X_train, y_train, k)
+  Acc_test = testKnn(Model_k, X_test, y_test)
+  print('%d-NN --> training accuracy = %.4f  /  test accuracy = %.4f' % (k, Acc_train, Acc_test))
+
+"""# 
+*   Implement distance().
+*   Implement predict_one().
+*   Verify whether myTrainKnn gives the same training accuracies with before.
+*   Verify whether myTestKnn gives the same test accuracies with before over increasing k. **(Note that when k is a even number, the resulting accuracy could be different due to different tie-braeaking. It is enough to see matching results for odd k's)**
+
+
+"""
+
+from collections import Counter
+class MyKNeighborsClassifier:
+  X_train = None
+  y_train = None
+
+  def __init__(self, n_neighbors):
+    self.k = n_neighbors
+
+  @staticmethod
+  def distance(src, dst):
+    ######################################################
+    distance = 0.0
+    for i in range(len(src)):
+      distance += (src[i] - dst[i])**2
+    return np.sqrt(distance)
+    ######################################################
+
+  def fit(self, X, y):
+    # Convert training data to numpy array.
+    # There is nothing to do more for kNN as it avoids explicit generalization.
+    self.X_train = np.array(X)
+    self.y_train = np.array(y)    
+    
+  ## Predict the label for just one example.
+  def predict_one(self, x):
+    # Measure the distance to each of training data.
+    # Then sort by increasing order of distances.
+    distances = []
+    for (i, x_train) in enumerate(self.X_train):      
+      distances.append([i, self.distance(x, x_train)])      
+    distances.sort(key=lambda element: element[1])
+
+    ########################################################################
+    kNN = []
+    for i in range(self.k):
+      kNN.append(distances[i][0])   
+    
+    ########################################################################
+    
+    # Extract k target values corresponding to the example indexes in kNN.    
+    targets = [self.y_train[i] for i in kNN]
+    
+    # Return the majority-voted target value.
+    return Counter(targets).most_common(1)[0][0]
+  
+  ## Predict the labels for every example.
+  def predict(self, X):    
+    predictions = []
+    for (i, x) in enumerate(np.array(X)):
+      predictions.append(self.predict_one(x))
+    return np.asarray(predictions)
+
+def myTrainKnn(X, y, k=1):
+  model = MyKNeighborsClassifier(n_neighbors=k)
+  model.fit(X, y)
+  pred = model.predict(X)
+  accuracy = sum(pred == y) / len(X)    
+  return model, accuracy
+
+Model, Acc_train = myTrainKnn(X_train, y_train, 1)
+print(Acc_train)
+Model3, Acc_train3 = myTrainKnn(X_train, y_train, 3)
+print(Acc_train3)
+
+def myTestKnn(model, X, y):
+  pred = model.predict(X)
+  accuracy = sum(pred == y) / len(X)
+  return accuracy 
+  
+myTestKnn(Model, X_test, y_test)
+for k in range(1, 20):
+  Model_k, Acc_train = myTrainKnn(X_train, y_train, k)
+  Acc_test = myTestKnn(Model_k, X_test, y_test)
+  print('%d-NN --> training accuracy = %.4f  /  test accuracy = %.4f' % (k, Acc_train, Acc_test))
+Footer
+© 2022 GitHub, Inc.
+Footer navigation
+Terms
+Privacy
+Security
+Status
+Docs
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
