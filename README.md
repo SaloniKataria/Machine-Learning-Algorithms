@@ -11,3 +11,5 @@ In kNN model:
 In Logistic Regression: 
 - Built logistic regression
 - Built Batch Gradident Descent
+
+building KMeans and Gaussian Mixture Model
